@@ -13,9 +13,11 @@ import rocketbot.plugins
 
 
 class RocketBot(RocketChat):
-    def __init__(self, user: str, password: Any | None = None, logger_config: dict | None=None,
+    def __init__(self, user: str, password: Any | None = None,
+                 logger_config: dict | None = None,
                  auth_token: Any | None = None, user_id: Any | None = None,
-                 server_url: str = 'http://127.0.0.1:3000', ssl_verify: bool = True,
+                 server_url: str = 'http://127.0.0.1:3000',
+                 ssl_verify: bool = True,
                  proxies: Any | None = None,
                  timeout: int = 30, session: Any | None = None,
                  client_certs: Any | None = None,
