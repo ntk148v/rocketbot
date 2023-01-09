@@ -13,8 +13,6 @@ load_dotenv()
 username = os.environ.get('ROCKET_USERNAME')
 password = os.environ.get('ROCKET_PASSWORD')
 server_url = os.environ.get('ROCKET_SERVER_URL')
-gatepro3_username = os.environ.get('GATEPRO3_USERNAME')
-gatepro3_password = os.environ.get('GATEPRO3_PASSWORD')
 
 rocket = RocketBot(user=username, password=password,
                    server_url=server_url, ssl_verify=False,
