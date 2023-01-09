@@ -28,6 +28,5 @@ def start(bot, message):
         message['rid'], f"hi @{message['u']['username']}, let's start")
 
 
-
 logger.info("Bot started")
 rocket.run(sleep=20)
