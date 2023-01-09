@@ -1,4 +1,5 @@
 import os
+import sys
 
 from dotenv import load_dotenv
 import requests
@@ -17,6 +18,12 @@ server_url = os.environ.get('ROCKET_SERVER_URL')
 rocket = RocketBot(user=username, password=password,
                    server_url=server_url, ssl_verify=False,
                    session=requests.sessions.Session(),
+                   logger_config={
+                       "handlers": [
+                           {"sink": sys.stdout, "format": "{time} - {message}"},
+                           {"sink": "/tmp/file.log", "serialize": True},
+                       ],
+                   },
                    threading_updates=True)
 
 
