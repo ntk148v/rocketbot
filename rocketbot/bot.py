@@ -1,6 +1,7 @@
 import importlib
 import pkgutil
 import re
+import sys
 import time
 import threading
 from typing import Any
@@ -12,7 +13,7 @@ import rocketbot.plugins
 
 
 class RocketBot(RocketChat):
-    def __init__(self, user: str, password: Any | None = None,
+    def __init__(self, user: str, password: Any | None = None, logger_config: dict | None=None,
                  auth_token: Any | None = None, user_id: Any | None = None,
                  server_url: str = 'http://127.0.0.1:3000', ssl_verify: bool = True,
                  proxies: Any | None = None,
@@ -26,6 +27,15 @@ class RocketBot(RocketChat):
         self.commands = {}
         self.threading = threading_updates
         self.last_ts = {}  # Last timestamp
+
+        # load logger
+        if not logger_config:
+            logger_config = {
+                "handlers": [
+                    {"sink": sys.stderr, "level": "INFO"}
+                ],
+            }
+        logger.configure(**logger_config)
 
         # Load built-in plugins
         self._load_plugins()
