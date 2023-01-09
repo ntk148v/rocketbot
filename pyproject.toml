@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "rocketbot"
-version = "0.1.0"
+version = "0.0.1"
 description = "Python framework to build RocketChat bot"
 authors = ["Kien Nguyen <kiennt2609@gmail.com>"]
 license = "Apache 2"
