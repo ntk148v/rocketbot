@@ -1,0 +1,21 @@
+[tool.poetry]
+name = "rocketbot"
+version = "0.1.0"
+description = "Python framework to build RocketChat bot"
+authors = ["Kien Nguyen <kiennt2609@gmail.com>"]
+license = "Apache 2"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+python-dotenv = "^0.21.0"
+rocketchat-API = "^1.28.1"
+loguru = "^0.6.0"
+
+[tool.poetry.dev-dependencies]
+
+[tool.poetry.group.dev.dependencies]
+pylint = "^2.15.9"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
