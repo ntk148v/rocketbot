@@ -42,27 +42,6 @@ class RocketBot(RocketChat):
         # Load built-in plugins
         self._load_plugins()
 
-    def _load_plugins(self):
-        """Dynamically load plugins"""
-        for _, name, _ in pkgutil.iter_modules(rocketbot.plugins.__path__):
-            try:
-                module = importlib.import_module('rocketbot.plugins.' + name)
-                module_name = module.__name__.split('.')[-1]
-                command = f'/{module_name}'
-                usage = 'Unknown usage'
-                if module.__doc__:
-                    command = module.__doc__.split('\n')[0]
-                    usage = ''.join(module.__doc__.split('\n')[1:])
-
-                # Construct a plugin
-                self.commands[command] = {
-                    'usage': usage,
-                    'handler': getattr(module, 'handle')
-                }
-                logger.debug(f'Loaded command {command}')
-            except Exception as e:
-                logger.warning(f'Import failed on module {name} due to: {e}')
-
     def get_commands(self):
         """Return a list of supported commands"""
         return self.commands
@@ -85,6 +64,7 @@ class RocketBot(RocketChat):
         def decorator(handler):
             self.commands[regex] = {
                 'usage': usage or 'Unknown usage',
+                'built-in': False,
                 'handler': handler
             }
             logger.debug(f'Loaded command {regex}')
@@ -160,6 +140,28 @@ class RocketBot(RocketChat):
             # Wait for a bit to work around with RocketChat ratelimit
             time.sleep(sleep)
 
+    def _load_plugins(self):
+        """Dynamically load plugins"""
+        for _, name, _ in pkgutil.iter_modules(rocketbot.plugins.__path__):
+            try:
+                module = importlib.import_module('rocketbot.plugins.' + name)
+                module_name = module.__name__.split('.')[-1]
+                command = f'/{module_name}'
+                usage = 'Unknown usage'
+                if module.__doc__:
+                    command = module.__doc__.split('\n')[0]
+                    usage = ''.join(module.__doc__.split('\n')[1:])
+
+                # Construct a plugin
+                self.commands[command] = {
+                    'usage': usage,
+                    'built-in': True,
+                    'handler': getattr(module, 'handle')
+                }
+                logger.debug(f'Loaded command {command}')
+            except Exception as e:
+                logger.warning(f'Import failed on module {name} due to: {e}')
+
     def _get_room(self, room_id: str, room_type: str):
         """Get room information with a given room id
 
@@ -204,13 +206,17 @@ class RocketBot(RocketChat):
                     m = regex.match(msg)
 
                     if m:
+                        if v.get('built-in'):
+                            args = [self, message]
+                        else:
+                            args = [message]
+
                         match_list = []
                         for x in m.groups():
                             match_list.append(x)
-                        try:
-                            v['handler'](self, message, match_list)
-                        except TypeError:
-                            v['handler'](self, message)
+                        args.append(match_list)
+
+                        v['handler'](*args)
 
             if self.threading:
                 # Set daemon is True, sub-thread will die if the main one exits

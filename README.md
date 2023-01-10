@@ -69,8 +69,8 @@ You can add a new plugin to initialized bot by using decorator `add_command`. `a
 
 ```python
 @rocket.add_command(r'/start', usage='Start working with bot')
-def start(bot, message):
-    bot.send_message(
+def start(message, *args):
+    rocket.send_message(
         message['rid'], f"hi @{message['u']['username']}, let's start")
 ```
 

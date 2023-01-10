@@ -4,7 +4,7 @@ Type /help to get a list of supported commands
 """
 
 
-def handle(bot, message):
+def handle(bot, message, *args):
     content = ""
     commands = bot.get_commands()
     for k, v in commands.items():

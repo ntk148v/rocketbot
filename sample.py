@@ -3,12 +3,13 @@ import sys
 
 from dotenv import load_dotenv
 import requests
+import urllib3
 
 from loguru import logger
 from rocketbot import RocketBot
 
 # Disable warning
-requests.packages.urllib3.disable_warnings()
+urllib3.disable_warnings()
 
 load_dotenv()
 username = os.environ.get('ROCKET_USERNAME')
@@ -21,16 +22,16 @@ rocket = RocketBot(user=username, password=password,
                    logger_config={
                        "handlers": [
                            {"sink": sys.stdout, "format": "{time} - {message}"},
-                           {"sink": "/tmp/file.log", "serialize": True},
+                           {"sink": "/tmp/rocketbot.log", "serialize": True},
                        ],
                    },
                    threading_updates=True)
 
 
 @rocket.add_command(r'/start', usage='Start working with bot')
-def start(bot, message):
-    bot.send_message(
-        message['rid'], f"hi @{message['u']['username']}, let's start")
+def start(message, *args):
+    rocket.send_message(message['rid'],
+                        f"hi @{message['u']['username']}, let's start")
 
 
 logger.info("Bot started")
