@@ -49,8 +49,8 @@ class RocketBot(RocketChat):
     def add_command(self, regex: str, usage: str | None = None):
         """Add command with matching regex
 
-        :params regex: If message matches regex, bot does the defined action
-        :params usage: Bot usage
+        :param regex: If message matches regex, bot does the defined action
+        :param usage: Bot usage
 
         Use it as decorator. For example:
 
@@ -86,8 +86,8 @@ class RocketBot(RocketChat):
     def set_status(self, message: str | None = None, status: str | None = None):
         """Set user's status message
 
-        :params message: The user's status message.
-        :params status: The user's status like online, away, busy, offline.
+        :param message: The user's status message.
+        :param status: The user's status like online, away, busy, offline.
         """
         if not message:
             message = "Hi, I'm bot. I can do some shitty thing"
@@ -99,7 +99,7 @@ class RocketBot(RocketChat):
     def run(self, sleep: int = 1):
         """Run bot
 
-        :params sleep: Time in second to wait between loop.
+        :param sleep: Time in second to wait between loop.
                        This argument is used if you hit rate limit issue.
         """
         while True:
@@ -165,8 +165,8 @@ class RocketBot(RocketChat):
     def _get_room(self, room_id: str, room_type: str):
         """Get room information with a given room id
 
-        :params room_id: Room's id
-        :params room_type: Room's type. The valid value:
+        :param room_id: Room's id
+        :param room_type: Room's type. The valid value:
                            'd': direct
                            'p': private group
                            'c': public channel
@@ -187,7 +187,7 @@ class RocketBot(RocketChat):
     def _handle_messages(self, messages: dict):
         """Handle messages get from each room
 
-        :params messages: Messages get from room history APIs.
+        :param messages: Messages get from room history APIs.
         """
         for message in messages:
             if message['u']['username'] == self.bot_name or \
