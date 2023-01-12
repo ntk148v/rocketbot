@@ -1,178 +1,121 @@
-import importlib
-import pkgutil
-import re
-import sys
-import time
-import threading
-from typing import Any
-
+import requests
 from loguru import logger
 from rocketchat_API.rocketchat import RocketChat
 
-import rocketbot.plugins
+from rocketbot.utils import ContextInstanceMixins
 
 
-class RocketBot(RocketChat):
-    def __init__(self, user: str, password: Any | None = None,
-                 logger_config: dict | None = None,
-                 auth_token: Any | None = None, user_id: Any | None = None,
-                 server_url: str = 'http://127.0.0.1:3000',
-                 ssl_verify: bool = True,
-                 proxies: Any | None = None,
-                 timeout: int = 30, session: Any | None = None,
-                 client_certs: Any | None = None,
-                 threading_updates=False):
-        """RocketBot is a plugginable RocketChat API wrapper."""
+class RocketBot(RocketChat, ContextInstanceMixins):
+    """Base bot class"""
+
+    def __init__(self, user=None, password=None, auth_token=None, user_id=None,
+                 server_url="http://127.0.0.1:3000", ssl_verify=True, proxies=None,
+                 timeout=30, session=None, client_certs=None):
+        """Creates a RocketChat object and does login on the specified server"""
+        # TODO(kiennt26): May be aiohttp's Session?
+        if not session:
+            session = requests.Session()
         super().__init__(user, password, auth_token, user_id, server_url,
                          ssl_verify, proxies, timeout, session, client_certs)
-        self.bot_name = user
-        self.commands = {}
-        self.threading = threading_updates
-        self.last_ts = {}  # Last timestamp
 
-        # load logger
-        if not logger_config:
-            logger_config = {
-                "handlers": [
-                    {"sink": sys.stderr, "level": "INFO"}
-                ],
-            }
-        logger.configure(**logger_config)
+    @property
+    def me(self):
+        if not hasattr(self, '_me'):
+            setattr(self, '_me', self.me().json())
+        return getattr(self, '_me')
 
-        # Load built-in plugins
-        self._load_plugins()
-
-    def get_commands(self):
-        """Return a list of supported commands"""
-        return self.commands
-
-    def add_command(self, regex: str, usage: str | None = None):
-        """Add command with matching regex
-
-        :param regex: If message matches regex, bot does the defined action
-        :param usage: Bot usage
-
-        Use it as decorator. For example:
-
-        # Init a bot
-        rocketbot = rocketbot(...)
-        @rocketbot.command(r'/echo (.*)')
-        def echo(bot, message, match_list):
-            bot.send_message(message['rid'], match_list[0])
+    @me.deleter
+    def me(self):
         """
+        Reset `me`
+        """
+        if hasattr(self, '_me'):
+            delattr(self, '_me')
 
-        def decorator(handler):
-            self.commands[regex] = {
-                'usage': usage or 'Unknown usage',
-                'built-in': False,
-                'handler': handler
-            }
-            logger.debug(f'Loaded command {regex}')
+    def send_message(self, text: str, chat_id: str, color: str = None):
+        """Posts a new chat text message
 
-        return decorator
+        :param text: text message
+        :param chat_id: the room id of where the message is to be sent
+        :param color: the color you want the order on the left side to be, any value
+                      background-css supports:
+                      https://developer.mozilla.org/en-US/docs/Web/CSS/background-color
 
-    def send_message(self, chat_id, text):
-        """Send message"""
-        return self.chat_post_message(text, chat_id)
+        Source: https://developer.rocket.chat/reference/api/rest-api/endpoints/core-endpoints/chat-endpoints/postmessage
+        """
+        return self.chat_post_message(text, room_id=chat_id, color=color).json()
+
+    def send_image(self, image_url: str, chat_id: str, text: str = None, title: str = None):
+        """Posts a new image
+
+        :param title: title to display for this attachment, displays under the author.
+        :param image_url: the image to display, will be "big" and easy to see
+        :param chat_id: the room id of where the message is to be sent
+        :param text: the text be sent along the image
+
+        Source: https://developer.rocket.chat/reference/api/rest-api/endpoints/core-endpoints/chat-endpoints/postmessage
+        """
+        title = title or "I send you an image"
+        return self.chat_post_message(text, room_id=chat_id,
+                                      attachments=[{
+                                          "image_url": image_url,
+                                          "title": title
+                                      }]).json()
+
+    def send_audio(self, audio_url: str, chat_id: str, text: str = None, title: str = None):
+        """Posts a new audio
+
+        :param title: title to display for this attachment, displays under the author.
+        :param audio_url: Audio file to play, only supports what html audio does.
+        :param chat_id: the room id of where the message is to be sent
+        :param text: the text be sent along the audio
+
+        Source: https://developer.rocket.chat/reference/api/rest-api/endpoints/core-endpoints/chat-endpoints/postmessage
+        """
+        title = title or "I send you an audio"
+        return self.chat_post_message(text, room_id=chat_id,
+                                      attachments=[{
+                                          "audio_url": audio_url,
+                                          "title": title
+                                      }]).json()
+
+    def send_video(self, video_url: str, chat_id: str, text: str = None):
+        """Posts a new video
+
+        :param title: title to display for this attachment, displays under the author.
+        :param video_url: Video file to play, only supports what html video does.
+        :param chat_id: the room id of where the message is to be sent
+        :param text: the text be sent along the video
+
+        Source: https://developer.rocket.chat/reference/api/rest-api/endpoints/core-endpoints/chat-endpoints/postmessage
+        """
+        title = title or "I send you a video"
+        return self.chat_post_message(text, room_id=chat_id,
+                                      attachments=[{
+                                          "video_url": video_url,
+                                          "title": title}]).json()
+
+    def send_richmessage(self, chat_id):
+        # TODO(kiennt26): Rich message
+        # https://github.com/jadolg/rocketchat_API/wiki/Send-richmessage
+        pass
 
     def subscribe(self):
-        """Get all subscriptions"""
+        """Get all subscriptions, use this method to receive incoming
+        updates.
+
+        Source: https://developer.rocket.chat/reference/api/rest-api/endpoints/core-endpoints/subscriptions-endpoints/get-all-subscriptions
+        """
         return self.subscriptions_get().json().get('update', list())
 
-    def get_status(self):
-        """Get user's status"""
-        return self.users_get_presence(username=self.bot_name)
+    def get_chat_history(self, room_id, room_type='d'):
+        """Retrieve the messages from room
 
-    def set_status(self, message: str | None = None, status: str | None = None):
-        """Set user's status message
-
-        :param message: The user's status message.
-        :param status: The user's status like online, away, busy, offline.
+        Source:
+        - https://developer.rocket.chat/reference/api/rest-api/endpoints/core-endpoints/channels-endpoints/history
+        - https://developer.rocket.chat/reference/api/rest-api/endpoints/core-endpoints/im-endpoints/history
+        - https://developer.rocket.chat/reference/api/rest-api/endpoints/core-endpoints/groups-endpoints/history
         """
-        if not message:
-            message = "Hi, I'm bot. I can do some shitty thing"
-        if not status:
-            status = "online"
-        return self.users_set_status(message=message,
-                                     status=status)
-
-    def run(self, sleep: int = 1):
-        """Run bot
-
-        :param sleep: Time in second to wait between loop.
-                       This argument is used if you hit rate limit issue.
-        """
-        while True:
-            updates = self.subscribe()
-            room = None
-
-            for result in updates:
-                room_id = result['rid']
-                room_unread = result['unread']
-                if not room_unread:
-                    logger.debug(f'The room with id {room_id}'
-                                 ' has been read, skip...')
-                    continue
-
-                room = self._get_room(room_id, result['t'])
-                if not room:
-                    logger.info("Something went wrong, unable to get room")
-                    continue
-
-                # Handle messages
-                messages = room.get('messages')
-                if not messages and not room.get('success'):
-                    logger.error(f"Something went wrong, receive"
-                                 f" error: {room.get('error')}")
-                    continue
-
-                # Set last timestamp
-                if len(messages) > 0:
-                    self.last_ts[room_id] = messages[0]['ts']
-
-                # Get only unread messages
-                messages = messages[:room_unread]
-                # Start processing the oldest message
-                messages.reverse()
-
-                self._handle_messages(messages)
-
-            # Wait for a bit to work around with RocketChat ratelimit
-            time.sleep(sleep)
-
-    def _load_plugins(self):
-        """Dynamically load plugins"""
-        for _, name, _ in pkgutil.iter_modules(rocketbot.plugins.__path__):
-            try:
-                module = importlib.import_module('rocketbot.plugins.' + name)
-                module_name = module.__name__.split('.')[-1]
-                command = f'/{module_name}'
-                usage = 'Unknown usage'
-                if module.__doc__:
-                    command = module.__doc__.split('\n')[0]
-                    usage = ''.join(module.__doc__.split('\n')[1:])
-
-                # Construct a plugin
-                self.commands[command] = {
-                    'usage': usage,
-                    'built-in': True,
-                    'handler': getattr(module, 'handle')
-                }
-                logger.debug(f'Loaded command {command}')
-            except Exception as e:
-                logger.warning(f'Import failed on module {name} due to: {e}')
-
-    def _get_room(self, room_id: str, room_type: str):
-        """Get room information with a given room id
-
-        :param room_id: Room's id
-        :param room_type: Room's type. The valid value:
-                           'd': direct
-                           'p': private group
-                           'c': public channel
-        """
-        logger.info(f'Process room with id {room_id}')
-        room = None
         if room_type == 'd':  # Direct
             room = self.im_history(room_id,
                                    oldest=self.last_ts.get(room_id)).json()
@@ -183,44 +126,3 @@ class RocketBot(RocketChat):
             room = self.groups_history(room_id,
                                        oldest=self.last_ts.get(room_id)).json()
         return room
-
-    def _handle_messages(self, messages: dict):
-        """Handle messages get from each room
-
-        :param messages: Messages get from room history APIs.
-        """
-        for message in messages:
-            if message['u']['username'] == self.bot_name or \
-                    message['u']['username'] == 'rocket.cat':
-                continue
-
-            @logger.catch
-            def response_update():
-                for k, v in self.commands.items():
-                    msg = message['msg']
-                    if msg.startswith('@' + self.bot_name):
-                        msg = msg.lstrip('@' + self.bot_name).strip()
-
-                    regex = re.compile(
-                        k, flags=re.MULTILINE | re.DOTALL)
-                    m = regex.match(msg)
-
-                    if m:
-                        if v.get('built-in'):
-                            args = [self, message]
-                        else:
-                            args = [message]
-
-                        match_list = []
-                        for x in m.groups():
-                            match_list.append(x)
-                        args.append(match_list)
-
-                        v['handler'](*args)
-
-            if self.threading:
-                # Set daemon is True, sub-thread will die if the main one exits
-                threading.Thread(
-                    target=response_update, daemon=True).start()
-            else:
-                response_update()
