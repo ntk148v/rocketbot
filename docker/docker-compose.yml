@@ -1,0 +1,45 @@
+version: "3.8"
+
+volumes:
+  mongodb_data:
+
+services:
+  mongo:
+    image: mongo:6.0
+    container_name: mongo
+    restart: always
+    volumes:
+      - mongodb_data:/data/db
+    command: mongod --oplogSize 128 --replSet rs0 --storageEngine=wiredTiger
+    ports:
+      - "27017:27017"
+
+  mongo-init-replica:
+    image: mongo:6.0
+    container_name: mongo-init-replica
+    depends_on:
+      - mongo
+    entrypoint: >
+      /bin/bash -c "sleep 5;
+      mongo --host mongo:27017 <<EOF
+      rs.initiate({
+        _id: 'rs0',
+        members: [
+          { _id: 0, host: 'mongo:27017' }
+        ]
+      })
+      EOF"
+
+  rocketchat:
+    image: rocketchat/rocket.chat:latest
+    container_name: rocketchat
+    restart: always
+    depends_on:
+      - mongo
+    environment:
+      MONGO_URL: mongodb://mongo:27017/rocketchat?replicaSet=rs0
+      MONGO_OPLOG_URL: mongodb://mongo:27017/local?replicaSet=rs0
+      ROOT_URL: http://localhost:3000
+      PORT: 3000
+    ports:
+      - "3000:3000"
